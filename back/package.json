@@ -1,0 +1,29 @@
+{
+    "name": "swerc-qualif-back",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsoa spec-and-routes && tsc",
+        "start": "node build/src/server.js",
+        "dev": "nodemon --exec \"tsoa spec-and-routes && ts-node src/server.ts\" --watch src --ext ts"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "MIT",
+    "packageManager": "pnpm@10.33.0",
+    "dependencies": {
+        "@tsoa/runtime": "7.0.0-alpha.0",
+        "express": "5.2.1",
+        "swagger-ui-express": "5.0.1",
+        "tsoa": "7.0.0-alpha.0"
+    },
+    "devDependencies": {
+        "@types/express": "5.0.6",
+        "@types/node": "25.5.0",
+        "@types/swagger-ui-express": "4.1.8",
+        "nodemon": "3.1.14",
+        "ts-node": "10.9.2",
+        "typescript": "6.0.2"
+    }
+}

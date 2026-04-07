@@ -1,0 +1,13 @@
+#main {
+  margin: 0 15px;
+  width: calc(100% - 30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}

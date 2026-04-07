@@ -114,7 +114,7 @@ export async function getAllSubmitsByProblem(token: string, id: number): Promise
 
 export async function getStatusBySubmit(token: string, id: number): Promise<SubmitStatus | undefined> {
     const response = await fetch(
-        `${ENV.api_url}/problem/${id}/submits`,
+        `${ENV.api_url}/submit/${id}/status`,
         {
             method: "GET",
             headers: {

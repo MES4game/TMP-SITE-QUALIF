@@ -25,7 +25,7 @@ export async function getSelf(token: string): Promise<User | undefined> {
 
 export async function getPseudoById(id: number): Promise<string> {
     const response = await fetch(
-        `${ENV.api_url}/user/pseudo/${id}`,
+        `${ENV.api_url}/user/${id}/pseudo`,
         {
             method: "GET",
         },
@@ -42,7 +42,7 @@ export async function getPseudoById(id: number): Promise<string> {
 
 export async function getAvatarById(id: number): Promise<Blob> {
     const response = await fetch(
-        `${ENV.api_url}/user/avatar/${id}`,
+        `${ENV.api_url}/user/${id}/avatar`,
         {
             method: "GET",
         },
@@ -129,7 +129,7 @@ export async function uploadAvatar(token: string, file: File): Promise<void> {
     formData.append("avatar", file);
 
     const response = await fetch(
-        `${ENV.api_url}/user/self`,
+        `${ENV.api_url}/user/self/avatar`,
         {
             method: "PUT",
             headers: {

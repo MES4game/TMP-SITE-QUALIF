@@ -226,7 +226,7 @@ export default function ScoreboardPage(): ReactNode {
     function tansformUserScore(row: UserScore): UserScore & { score: number } {
         return {
             ...row,
-            score: row.problems.reduce((acc, problem) => acc + (problem.time_solved >= 0 ? problem.time_solved + problem.nb_tries * ENV.error_malus : 0), 0),
+            score: row.problems.reduce((acc, problem) => acc + (problem.time_solved >= 0 ? problem.time_solved + (problem.nb_tries - 1) * ENV.error_malus : 0), 0),
         };
     }
 

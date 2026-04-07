@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  pseudo          String    @unique
+  firstname       String
+  lastname        String
+  password        String    // Storing hashed password
+  created_on      DateTime  @default(now())
+  last_connection DateTime  @default(now())
+  deleted_on      DateTime?
+  verified_email  Boolean   @default(false)
+
+  submits         Submit[]
+}
+
+model Problem {
+  id           Int      @id @default(autoincrement())
+  color        String   @default("#000000")
+  short_title  String
+  title        String
+  description  String   @db.Text
+  time_limit   Int      @default(1000)
+  memory_limit Int      @default(256)
+
+  samples      Sample[]
+  submits      Submit[]
+}
+
+model Sample {
+  id          Int      @id @default(autoincrement())
+  problem_id  Int
+  input       String   @db.Text
+  output      String   @db.Text
+  explanation String?  @db.Text
+
+  problem     Problem  @relation(fields: [problem_id], references: [id])
+}
+
+model Submit {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  problem_id  Int
+  status      String   @default("-") // Frontend expects: "SOLVED", "ERROR", or "-"
+  submited_on DateTime @default(now())
+  language    String
+
+  user        User     @relation(fields: [user_id], references: [id])
+  problem     Problem  @relation(fields: [problem_id], references: [id])
+}

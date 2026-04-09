@@ -1,0 +1,50 @@
+name: site-qualif
+
+services:
+  back:
+    image: ${DOCKER_IMAGE_BACK}
+    container_name: back
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DOCKER_PORT_BACK}:3000"
+    volumes:
+      - ${DOCKER_MOUNTED_BACK}:/mounted
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      FRONT_URL: ${FRONT_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      START_DATE: ${START_DATE}
+      FREEZE_DATE: ${FREEZE_DATE}
+    depends_on:
+      - database
+    networks:
+      - internal-network
+
+  database:
+    image: ${DOCKER_IMAGE_DB}
+    container_name: database 
+    restart: unless-stopped
+    volumes:
+      - ${DOCKER_MOUNTED_DB}:/var/lib/mysql
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: yes
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    networks:
+      - internal-network
+
+networks:
+  internal-network:
+    driver: bridge

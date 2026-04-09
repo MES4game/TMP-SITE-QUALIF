@@ -32,14 +32,36 @@ const MuiMarkdown = ({ content }: { content: string }) => {
     return (
         <Box sx={{
             textAlign: 'left',
+            // 1. Force general text to wrap within the container bounds
+            overflowWrap: 'break-word',
+            wordWrap: 'break-word',
+            maxWidth: '100%',
+
             '& p': { mb: 2 },
             '& h1, & h2, & h3, & h4': { mt: 3, mb: 1, fontWeight: 'bold' },
+
+            // 2. Ensure inline code blocks wrap instead of expanding off-screen
             '& code': {
                 bgcolor: 'background.paper',
                 p: 0.5,
                 borderRadius: 1,
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
             },
+
+            // 3. Fix KaTeX inline math so it wraps with the text
+            '& .katex': {
+                whiteSpace: 'normal',
+            },
+
+            // 4. If you have display/block math ($$ ... $$) that is too long, 
+            // give it a horizontal scrollbar instead of breaking the layout
+            '& .katex-display': {
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                paddingBottom: '0.5rem', // Padding so the scrollbar doesn't clip the equation
+            }
         }}>
             <ReactMarkdown
                 remarkPlugins={[remarkMath, remarkGfm]}
@@ -282,6 +304,8 @@ export default function ProblemByIdPage() {
         return () => { unsubscribers.forEach((fn) => { fn(); }); };
     }, [problemId]);
 
+    useEffect(() => { console.log(pastSubmits); }, [pastSubmits]);
+
     if (!problem) return <BlankComp text='No problem found' />;
 
     return (
@@ -485,7 +509,7 @@ export default function ProblemByIdPage() {
                                         return (
                                             <IconButton
                                                 size="small"
-                                                onClick={() => handleDownloadSubmit(row.submit_id)}
+                                                onClick={() => handleDownloadSubmit(row.id)}
                                                 color="primary"
                                             >
                                                 <DownloadIcon fontSize="small" />

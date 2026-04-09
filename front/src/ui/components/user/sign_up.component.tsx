@@ -138,7 +138,7 @@ export default function SignUp(props: { changeMode: () => void }): React.ReactNo
 
         registerUser(data.get('pseudo') as string, data.get('email') as string, data.get('firstname') as string, data.get('lastname') as string, data.get('password') as string)
             .then((_response) => {
-                alert('Registration successful! Please log in.');
+                alert('Registration successful! Please, validate your email before log in.');
                 props.changeMode();
             })
             .catch((error) => {

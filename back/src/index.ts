@@ -416,7 +416,7 @@ app.get('/scoreboard', getScoreboard);
 // submit a solution by sending a file/blob with the code and the problem and language as parameters
 /**
  * @swagger
- * /submit:
+ * /submit/{problem}/{language}:
  *   post:
  *     summary: Submit a solution for a problem
  *     tags: [Submit]

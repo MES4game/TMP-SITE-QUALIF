@@ -31,9 +31,9 @@ export async function getAllSamplesByProblem(id: number): Promise<Sample[] | und
 
     if (!response.ok) throw new Error(data.message ?? `Failed to fetch samples data: ${response.status}`);
 
-    if (!Array.isArray(data.problems)) throw new Error("Invalid response from server");
+    if (!Array.isArray(data.samples)) throw new Error("Invalid response from server");
 
-    return data.problems.map(mapSample);
+    return data.samples.map(mapSample);
 }
 
 export async function getSkeletonCodeByProblem(id: number, language: string): Promise<{ filename: string, blob: Blob }> {

@@ -88,7 +88,7 @@ export default function SignIn(props: { changeMode: () => void }): React.ReactNo
             .then((res) => { token.current = res; })
             .catch((err) => {
                 console.error(err);
-                alert("Login failed. Please check your credentials and try again.");
+                alert("Login failed:" + (err.response?.data?.message || err.message || "Unknown error"));
                 token.current = undefined;
             });
 

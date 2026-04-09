@@ -66,15 +66,15 @@ export const mapSubmitStatus = createMapper<SubmitStatus>({
 });
 
 export interface Submit {
+    id: number;
     status_id: number;
     submited_on: Date;
     language: Language["key"];
-    submit_id: number;
 }
 
 export const mapSubmit = createMapper<Submit>({
+    id: createConverter(unknownToNumber, -1),
     status_id: createConverter(unknownToNumber, -1),
     submited_on: createConverter(unknownToDate, new Date()),
     language: createConverter(unknownToString, ""),
-    submit_id: createConverter(unknownToNumber, -1),
 });

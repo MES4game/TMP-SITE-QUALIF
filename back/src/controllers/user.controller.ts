@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/email.util';
 import { ResultSetHeader } from 'mysql2';
+import { AVATAR_DIR } from '../middlewares/upload.middleware';
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -23,10 +24,16 @@ export const registerUser = async (req: Request, res: Response) => {
 
         const verificationToken = jwt.sign({ id: result.insertId }, env.JWT_SECRET, { expiresIn: '24h' });
         
-        sendVerificationEmail(email, verificationToken).catch(console.error);
+        sendVerificationEmail(email, verificationToken).catch(
+            (error) => {
+                pool.query(`DELETE FROM users WHERE id = ?`, [result.insertId]);
+                throw new Error(`Failed to send verification email: ${error.message}`);
+            }
+        );
 
         return res.status(201).json({ message: "User registered successfully" });
     } catch (error: any) {
+        console.error("Error fetching problems:", error);
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ message: "Email or pseudo already exists" });
         }
@@ -43,6 +50,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
         await pool.query(`UPDATE users SET verified_email = TRUE WHERE id = ?`, [userId]);
         return res.json({ message: "Email verified successfully" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -73,6 +81,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
         return res.json({ token });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -85,6 +94,7 @@ export const getSelf = async (req: AuthRequest, res: Response) => {
 
         return res.json({ user: users[0] });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -100,6 +110,7 @@ export const updateSelf = async (req: AuthRequest, res: Response) => {
 
         return res.json({ message: "User updated successfully" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -116,6 +127,7 @@ export const forgotPassword = async (req: AuthRequest, res: Response) => {
 
         return res.json({ message: "If an account with that email exists, a password reset link has been sent" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -138,6 +150,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 
         return res.json({ message: "Password has been successfully reset" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -146,10 +159,10 @@ export const uploadUserAvatar = async (req: AuthRequest, res: Response) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     try {
-        const avatarPath = `/uploads/avatars/${req.file.filename}`;
-        await pool.query(`UPDATE users SET avatar_path = ? WHERE id = ?`, [avatarPath, req.user_id]);
+        await pool.query(`UPDATE users SET avatar_path = ? WHERE id = ?`, [req.file.filename, req.user_id]);
         return res.json({ message: "Avatar uploaded" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -161,7 +174,7 @@ export const deleteUserAvatar = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ message: "Avatar not found" });
         }
 
-        const avatarPath = path.join(__dirname, '../../', users[0].avatar_path);
+        const avatarPath = path.join(AVATAR_DIR, users[0].avatar_path);
         if (fs.existsSync(avatarPath)) {
             fs.unlinkSync(avatarPath);
         }
@@ -169,6 +182,7 @@ export const deleteUserAvatar = async (req: AuthRequest, res: Response) => {
         await pool.query(`UPDATE users SET avatar_path = NULL WHERE id = ?`, [req.user_id]);
         return res.json({ message: "Avatar deleted" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 }
@@ -179,8 +193,9 @@ export const getAvatarById = async (req: Request, res: Response) => {
         if (users.length === 0 || !users[0].avatar_path) {
             return res.status(404).send("Avatar not found");
         }
-        res.sendFile(path.join(__dirname, '../../', users[0].avatar_path));
+        res.sendFile(path.join(AVATAR_DIR, users[0].avatar_path));
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -193,6 +208,7 @@ export const getPseudoById = async (req: Request, res: Response) => {
         }
         return res.json({ pseudo: users[0].pseudo });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -203,6 +219,7 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
         await pool.query(`UPDATE users SET deleted_on = CURRENT_TIMESTAMP WHERE id = ?`, [req.user_id]);
         return res.json({ message: "Account deleted" });
     } catch (error) {
+        console.error("Error fetching problems:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };

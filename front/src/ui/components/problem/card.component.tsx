@@ -12,9 +12,6 @@ import {
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import MemoryIcon from '@mui/icons-material/Memory';
 import ReplayIcon from '@mui/icons-material/Replay';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
 import type { Problem, SubmitStatus } from '~/shared/models/problem.model';
 import ProblemBadgeComp from '~/ui/components/problem/badge.component';
 import { useNavigate } from 'react-router';
@@ -27,10 +24,10 @@ interface ProblemCardProps {
 }
 
 export default function ProblemCardComp(props: ProblemCardProps): ReactNode {
-    const { token } = useGeneralContext();
+    const { token, statuses } = useGeneralContext();
     const reRender = useReRender();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<SubmitStatus>('-');
+    const [status, setStatus] = useState(-1);
     const [numberTries, setNumberTries] = useState<number>(0);
 
     useEffect(() => {
@@ -44,7 +41,7 @@ export default function ProblemCardComp(props: ProblemCardProps): ReactNode {
                 })
                 .catch((err) => {
                     console.error(`Failed to fetch user info for problem ${props.problem.id}:`, err);
-                    setStatus('-');
+                    setStatus(-1);
                     setNumberTries(0);
                 });
         }
@@ -52,6 +49,22 @@ export default function ProblemCardComp(props: ProblemCardProps): ReactNode {
         const unsubscribers: (() => void)[] = [];
 
         unsubscribers.push(token.subscribe(reRender));
+        unsubscribers.push(statuses.subscribe(reRender));
+
+        unsubscribers.push(token.subscribe((_, curr) => {
+            if (curr === undefined) return;
+
+            getUserInfoByProblem(curr, props.problem.id)
+                .then((info) => {
+                    setStatus(info.status);
+                    setNumberTries(info.number_tries);
+                })
+                .catch((err) => {
+                    console.error(`Failed to fetch user info for problem ${props.problem.id}:`, err);
+                    setStatus(-1);
+                    setNumberTries(0);
+                });
+        }));
 
         return () => { unsubscribers.forEach((fn) => { fn(); }); };
     }, []);
@@ -61,16 +74,8 @@ export default function ProblemCardComp(props: ProblemCardProps): ReactNode {
     });
 
     // Helper function to map the status to specific chip colors and icons
-    const getStatusConfig = (status: SubmitStatus) => {
-        switch (status) {
-            case 'SOLVED':
-                return { color: 'success' as const, icon: <CheckCircleIcon />, label: 'Solved' };
-            case 'ERROR':
-                return { color: 'error' as const, icon: <ErrorIcon />, label: 'Error' };
-            case '-':
-            default:
-                return { color: 'default' as const, icon: <HorizontalRuleIcon />, label: 'Unsolved' };
-        }
+    const getStatusConfig = (status: number): SubmitStatus => {
+        return statuses.current?.find((s) => s.id === status) ?? { id: -1, name: "-", description: "", color: "#000000" };
     };
 
     const statusConfig = getStatusConfig(status);
@@ -95,26 +100,23 @@ export default function ProblemCardComp(props: ProblemCardProps): ReactNode {
             >
                 <CardContent>
                     {/* Header: Badge, Title, and Status */}
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <ProblemBadgeComp problem={props.problem} />
-                            <Typography
-                                variant="h6"
-                                component="div"
-                                sx={{ fontWeight: 600, lineHeight: 1.2 }}
-                            >
-                                {props.problem.title}
-                            </Typography>
-                        </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                        <ProblemBadgeComp problem={props.problem} />
                         <Chip
                             size="small"
                             variant="outlined"
-                            color={statusConfig.color}
-                            icon={statusConfig.icon}
-                            label={statusConfig.label}
-                            sx={{ fontWeight: 'bold' }}
+                            color={statusConfig.color as any}
+                            label={statusConfig.name}
+                            sx={{ fontWeight: 'bold', color: statusConfig.color, borderColor: statusConfig.color }}
                         />
                     </Box>
+                    <Typography
+                        variant="h6"
+                        component="div"
+                        sx={{ fontWeight: 600, lineHeight: 1.2, mb: 2 }}
+                    >
+                        {props.problem.title}
+                    </Typography>
 
                     <Divider sx={{ my: 1.5 }} />
 

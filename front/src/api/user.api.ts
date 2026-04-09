@@ -104,6 +104,63 @@ export async function registerUser(pseudo: string, email: string, firstname: str
     return;
 }
 
+export async function verifyEmail(token: string): Promise<void> {
+    const response = await fetch(
+        `${ENV.api_url}/auth/verify-email`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+        },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message ?? `Failed to verify email: ${response.status}`);
+
+    return;
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+    const response = await fetch(
+        `${ENV.api_url}/auth/forgot-password`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+        },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message ?? `Failed to send forgot password email: ${response.status}`);
+
+    return;
+}
+
+export async function resetPassword(token: string, new_password: string): Promise<void> {
+    const response = await fetch(
+        `${ENV.api_url}/auth/reset-password`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token, new_password }),
+        },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message ?? `Failed to reset password: ${response.status}`);
+
+    return;
+}
+
 export async function updateUser(token: string, updates: Partial<User>): Promise<void> {
     const response = await fetch(
         `${ENV.api_url}/user/self`,
@@ -142,6 +199,24 @@ export async function uploadAvatar(token: string, file: File): Promise<void> {
     const data = await response.json();
 
     if (!response.ok) throw new Error(data.message ?? `Failed to upload avatar: ${response.status}`);
+
+    return;
+}
+
+export async function deleteAvatar(token: string): Promise<void> {
+    const response = await fetch(
+        `${ENV.api_url}/user/self/avatar`,
+        {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message ?? `Failed to delete avatar: ${response.status}`);
 
     return;
 }

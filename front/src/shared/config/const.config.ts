@@ -50,9 +50,14 @@ export const PAGES: PageData[] = [
         component: lazy(() => { return import('~/ui/pages/problem/[id]/[id].page'); }),
     },
     {
-        title: 'Submit',
-        url: '/submit/:id',
-        component: lazy(() => { return import('~/ui/pages/submit/[id]/[id].page'); }),
+        title: 'Reset Password',
+        url: '/reset-password/:token',
+        component: lazy(() => { return import('~/ui/pages/reset-password/reset-password.page'); }),
+    },
+    {
+        title: 'Verify Email',
+        url: '/verify-email/:token',
+        component: lazy(() => { return import('~/ui/pages/verify-email/verify-email.page'); }),
     }
 ];
 

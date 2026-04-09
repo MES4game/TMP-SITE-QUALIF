@@ -1,9 +1,7 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
 import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
@@ -13,7 +11,8 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import { useGeneralContext } from '~/shared/contexts/general.context';
-import { mapUser } from '~/shared/models/user.model';
+import { useReRender } from '~/shared/utils/hook.util';
+import { registerUser } from '~/api/user.api';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
@@ -58,23 +57,39 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
 }));
 
 export default function SignUp(props: { changeMode: () => void }): React.ReactNode {
-    const { user } = useGeneralContext();
+    const { token } = useGeneralContext();
+    const reRender = useReRender();
 
+    const [pseudoError, setPseudoError] = React.useState(false);
+    const [pseudoErrorMessage, setPseudoErrorMessage] = React.useState('');
     const [emailError, setEmailError] = React.useState(false);
     const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
+    const [firstnameError, setFirstnameError] = React.useState(false);
+    const [firstnameErrorMessage, setFirstnameErrorMessage] = React.useState('');
+    const [lastnameError, setLastnameError] = React.useState(false);
+    const [lastnameErrorMessage, setLastnameErrorMessage] = React.useState('');
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
-    const [nameError, setNameError] = React.useState(false);
-    const [nameErrorMessage, setNameErrorMessage] = React.useState('');
 
     const validateInputs = () => {
+        const pseudo = document.getElementById('pseudo') as HTMLInputElement;
         const email = document.getElementById('email') as HTMLInputElement;
         const password = document.getElementById('password') as HTMLInputElement;
-        const name = document.getElementById('name') as HTMLInputElement;
+        const firstname = document.getElementById('firstname') as HTMLInputElement;
+        const lastname = document.getElementById('lastname') as HTMLInputElement;
 
         let isValid = true;
 
-        if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
+        if (!pseudo.value || pseudo.value.length < 3 || pseudo.value.length > 45) {
+            setPseudoError(true);
+            setPseudoErrorMessage('Username must be at least 3 characters long.');
+            isValid = false;
+        } else {
+            setPseudoError(false);
+            setPseudoErrorMessage('');
+        }
+
+        if (!email.value || !/\S+@\S+\.\S+/.test(email.value) || email.value.length > 250) {
             setEmailError(true);
             setEmailErrorMessage('Please enter a valid email address.');
             isValid = false;
@@ -92,38 +107,59 @@ export default function SignUp(props: { changeMode: () => void }): React.ReactNo
             setPasswordErrorMessage('');
         }
 
-        if (!name.value || name.value.length < 1) {
-            setNameError(true);
-            setNameErrorMessage('Name is required.');
+        if (!firstname.value || firstname.value.length < 1 || firstname.value.length > 90) {
+            setFirstnameError(true);
+            setFirstnameErrorMessage('Name is required.');
             isValid = false;
         } else {
-            setNameError(false);
-            setNameErrorMessage('');
+            setFirstnameError(false);
+            setFirstnameErrorMessage('');
+        }
+
+        if (!lastname.value || lastname.value.length < 1 || lastname.value.length > 90) {
+            setLastnameError(true);
+            setLastnameErrorMessage('Name is required.');
+            isValid = false;
+        } else {
+            setLastnameError(false);
+            setLastnameErrorMessage('');
         }
 
         return isValid;
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        if (nameError || emailError || passwordError) {
+    const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+        if (firstnameError || emailError || passwordError) {
             event.preventDefault();
             return;
         }
-        const data = new FormData(event.currentTarget);
-        console.log({
-            name: data.get('name'),
-            lastName: data.get('lastName'),
-            email: data.get('email'),
-            password: data.get('password'),
-        });
 
-        user.current = mapUser({
-            email: data.get('email') as string,
-            firstname: data.get('name') as string,
-            lastname: data.get('lastname') as string,
-            verified_email: true,
-        });
+        const data = new FormData(event.currentTarget);
+
+        registerUser(data.get('pseudo') as string, data.get('email') as string, data.get('firstname') as string, data.get('lastname') as string, data.get('password') as string)
+            .then((_response) => {
+                alert('Registration successful! Please log in.');
+                props.changeMode();
+            })
+            .catch((error) => {
+                console.error('Registration failed:', error);
+                alert('Registration failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+            });
+
+        event.preventDefault();
     };
+
+    React.useEffect(() => {
+        console.log("Loaded: SignUpComp");
+
+        const unsubscribers: (() => void)[] = [];
+
+        unsubscribers.push(token.subscribe(reRender));
+
+        return () => {
+            unsubscribers.forEach((fn) => { fn(); });
+        };
+    }, []);
 
     return (
         <SignUpContainer direction="column" justifyContent="space-between" width="stretch">
@@ -141,17 +177,45 @@ export default function SignUp(props: { changeMode: () => void }): React.ReactNo
                     sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
                 >
                     <FormControl>
-                        <FormLabel htmlFor="name">Full name</FormLabel>
+                        <FormLabel htmlFor="firstname">Firstname</FormLabel>
                         <TextField
-                            autoComplete="name"
-                            name="name"
+                            autoComplete="firstname"
+                            name="firstname"
                             required
                             fullWidth
-                            id="name"
-                            placeholder="Jon Snow"
-                            error={nameError}
-                            helperText={nameErrorMessage}
-                            color={nameError ? 'error' : 'primary'}
+                            id="firstname"
+                            placeholder="Jon"
+                            error={firstnameError}
+                            helperText={firstnameErrorMessage}
+                            color={firstnameError ? 'error' : 'primary'}
+                        />
+                    </FormControl>
+                    <FormControl>
+                        <FormLabel htmlFor="lastname">Lastname</FormLabel>
+                        <TextField
+                            autoComplete="lastname"
+                            name="lastname"
+                            required
+                            fullWidth
+                            id="lastname"
+                            placeholder="Smith"
+                            error={lastnameError}
+                            helperText={lastnameErrorMessage}
+                            color={lastnameError ? 'error' : 'primary'}
+                        />
+                    </FormControl>
+                    <FormControl>
+                        <FormLabel htmlFor="pseudo">Pseudo</FormLabel>
+                        <TextField
+                            autoComplete="pseudo"
+                            name="pseudo"
+                            required
+                            fullWidth
+                            id="pseudo"
+                            placeholder="Smith"
+                            error={pseudoError}
+                            helperText={pseudoErrorMessage}
+                            color={pseudoError ? 'error' : 'primary'}
                         />
                     </FormControl>
                     <FormControl>
@@ -185,10 +249,6 @@ export default function SignUp(props: { changeMode: () => void }): React.ReactNo
                             color={passwordError ? 'error' : 'primary'}
                         />
                     </FormControl>
-                    <FormControlLabel
-                        control={<Checkbox value="allowExtraEmails" color="primary" />}
-                        label="I want to receive updates via email."
-                    />
                     <Button
                         type="submit"
                         fullWidth

@@ -1,8 +1,6 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Divider from '@mui/material/Divider';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
@@ -14,7 +12,8 @@ import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '~/ui/components/user/forgot_password.component';
 import { useGeneralContext } from '~/shared/contexts/general.context';
-import { mapUser } from '~/shared/models/user.model';
+import { useReRender } from '~/shared/utils/hook.util';
+import { loginUser } from '~/api/user.api';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
@@ -59,7 +58,8 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 }));
 
 export default function SignIn(props: { changeMode: () => void }): React.ReactNode {
-    const { user } = useGeneralContext();
+    const { token } = useGeneralContext();
+    const reRender = useReRender();
 
     const [emailError, setEmailError] = React.useState(false);
     const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
@@ -81,14 +81,18 @@ export default function SignIn(props: { changeMode: () => void }): React.ReactNo
             return;
         }
         const data = new FormData(event.currentTarget);
-        console.log({
-            email: data.get('email'),
-            password: data.get('password'),
-        });
 
-        user.current = mapUser({
-            email: data.get('email') as string,
-        });
+        console.log({ email: data.get('email'), password: data.get('password') })
+
+        loginUser(data.get('email') as string, data.get('password') as string)
+            .then((res) => { token.current = res; })
+            .catch((err) => {
+                console.error(err);
+                alert("Login failed. Please check your credentials and try again.");
+                token.current = undefined;
+            });
+
+        event.preventDefault();
     };
 
     const validateInputs = () => {
@@ -117,6 +121,19 @@ export default function SignIn(props: { changeMode: () => void }): React.ReactNo
 
         return isValid;
     };
+
+    React.useEffect(() => {
+
+        console.log("Loaded: SignInComp");
+
+        const unsubscribers: (() => void)[] = [];
+
+        unsubscribers.push(token.subscribe(reRender));
+
+        return () => {
+            unsubscribers.forEach((fn) => { fn(); });
+        };
+    }, []);
 
     return (
         <SignInContainer direction="column" justifyContent="space-between" width="stretch">
@@ -173,10 +190,6 @@ export default function SignIn(props: { changeMode: () => void }): React.ReactNo
                             color={passwordError ? 'error' : 'primary'}
                         />
                     </FormControl>
-                    <FormControlLabel
-                        control={<Checkbox value="remember" color="primary" />}
-                        label="Remember me"
-                    />
                     <ForgotPassword open={open} handleClose={handleClose} />
                     <Button
                         type="submit"

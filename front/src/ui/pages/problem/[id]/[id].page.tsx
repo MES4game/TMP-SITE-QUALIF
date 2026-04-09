@@ -9,6 +9,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import SendIcon from '@mui/icons-material/Send';
 import CodeIcon from '@mui/icons-material/Code';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Markdown & LaTeX dependencies
 import ReactMarkdown from 'react-markdown';
@@ -22,8 +23,8 @@ import { useGeneralContext } from '~/shared/contexts/general.context';
 import { useReRender } from '~/shared/utils/hook.util';
 import BlankComp from '~/ui/components/common/blank.component';
 import ProblemBadgeComp from '~/ui/components/problem/badge.component';
-import { getAllSamplesByProblem, getAllSubmitsByProblem, getSkeletonCodeByProblem } from '~/api/problem.api';
-import Board from '~/ui/components/common/board.component';
+import { getAllSamplesByProblem, getAllSubmitsByProblem, getCodeBySubmit, getSkeletonCodeByProblem, submitProblem } from '~/api/problem.api';
+import BoardComp from '~/ui/components/common/board.component';
 
 // --- Helper Components ---
 
@@ -99,7 +100,7 @@ const TerminalBlock = ({ title, text }: { title: string, text: string }) => {
 // --- Main Page Component ---
 
 export default function ProblemByIdPage() {
-    const { token, problems, languages } = useGeneralContext();
+    const { token, problems, languages, statuses } = useGeneralContext();
     const reRender = useReRender();
     const { id } = useParams<{ id: string }>();
 
@@ -111,63 +112,21 @@ export default function ProblemByIdPage() {
     const [code, setCode] = useState<string>('');
     const [fileName, setFileName] = useState<string>('');
     const [codeFile, setCodeFile] = useState<File | null>(null);
-    const [samples, setSamples] = useState<Sample[]>([]);
-    const [pastSubmits, setPastSubmits] = useState<Submit[]>([]);
-
-    const default_samples: Sample[] = [
-        {
-            id: 1,
-            input: "1 -3 2\n",
-            output: "2.0 1.0\n",
-            explanation: "Here $a=1, b=-3, c=2$. The roots are $x=2$ and $x=1$."
-        },
-        {
-            id: 2,
-            input: "1 -2 1\n",
-            output: "1.0\n",
-            explanation: "Here $a=1, b=-2, c=1$. The root is $x=1$ (double root)."
-        },
-        {
-            id: 3,
-            input: "1 0 1\n",
-            output: "No real roots\n",
-            explanation: "Here $a=1, b=0, c=1$. The discriminant is negative, so there are no real roots."
-        }
-    ];
-
-    const default_pastSubmits: Submit[] = [
-        { submit_id: 105, status: '-', language: 'python', submited_on: new Date() },
-        { submit_id: 101, status: 'SOLVED', language: 'python', submited_on: new Date() },
-        { submit_id: 100, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 99, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 98, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 97, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 96, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 95, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 94, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 93, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 92, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 91, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 90, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 89, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 88, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 87, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 86, status: 'ERROR', language: 'python', submited_on: new Date() },
-        { submit_id: 85, status: 'ERROR', language: 'python', submited_on: new Date() },
-    ];
+    const [samples, setSamples] = useState<Sample[] | undefined>(undefined);
+    const [pastSubmits, setPastSubmits] = useState<Submit[] | undefined>(undefined);
 
     // --- Handlers ---
     const handleDownloadSkeleton = async () => {
         if (!language) return alert("Select a language first!");
 
         try {
-            const blob = await getSkeletonCodeByProblem(problemId, language);
+            const { filename, blob } = await getSkeletonCodeByProblem(problemId, language);
             const url = window.URL.createObjectURL(blob);
 
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = `skeleton_${problemId}.${language}`;
+            a.download = filename;
 
             document.body.appendChild(a);
             a.click();
@@ -181,36 +140,73 @@ export default function ProblemByIdPage() {
         }
     };
 
+    const handleRefreshSubmits = () => {
+        if (!token.current) {
+            setPastSubmits(undefined);
+            return;
+        }
+
+        getAllSubmitsByProblem(token.current, problemId)
+            .then((data) => { setPastSubmits(data?.sort((a, b) => { return b.submited_on.getTime() - a.submited_on.getTime(); })); })
+            .catch((err) => {
+                console.error("Failed to fetch submits:", err);
+                setPastSubmits(undefined);
+            });
+    };
+
     const handleDownloadSubmit = async (submitId: number) => {
+        if (!token.current) return alert("You must be logged in to download submit code!");
+
         console.log(`Downloading code for submit ${submitId}`);
+
+        getCodeBySubmit(token.current, submitId)
+            .then(({ filename, blob }) => {
+                const url = window.URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+
+                document.body.appendChild(a);
+                a.click();
+
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch((err) => {
+                console.error(`Failed to download code for submit ${submitId}:`, err);
+                alert("Failed to download the submitted code. Please try again.");
+            });
     };
 
     const handleSubmitCode = async () => {
+        if (!token.current) return alert("You must be logged in to submit code!");
         if (!language || !codeFile) return;
 
         console.log("Submitting file:", codeFile.name, "in language:", language);
 
-        // Use FormData to send the file as a multipart request
-        const formData = new FormData();
-        formData.append('file', codeFile);
-        formData.append('language', language);
+        const utf8File = new File(
+            [await codeFile.text()],
+            codeFile.name,
+            { type: 'text/plain; charset=utf-8' }
+        );
 
-        /* Example API Call:
-        try {
-            const response = await fetch(`${ENV.api_url}/problem/${problemId}/submit`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token.current}`
-                    // IMPORTANT: Do NOT manually set 'Content-Type': 'multipart/form-data'. 
-                    // The browser must set it automatically to append the correct boundary string.
-                },
-                body: formData
+        const formData = new FormData();
+        formData.append('file', utf8File);
+
+        submitProblem(token.current!, problemId, language, formData)
+            .then(() => {
+                alert("Code submitted successfully!");
+                setCode('');
+                setFileName('');
+                setCodeFile(null);
+                handleRefreshSubmits();
+            })
+            .catch((err) => {
+                console.error("Failed to submit code:", err);
+                alert("Failed to submit your code. Please try again.");
             });
-            // Handle success...
-        } catch (error) {
-            console.error(error);
-        }
-        */
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,42 +241,43 @@ export default function ProblemByIdPage() {
     useEffect(() => {
         if (isNaN(problemId)) return;
 
-        const unsubscribers: (() => void)[] = [];
-
-        unsubscribers.push(problems.subscribe(reRender));
-
         getAllSamplesByProblem(problemId)
-            .then((data) => { setSamples(data || default_samples); })
+            .then((data) => { setSamples(data); })
             .catch((err) => {
                 console.error("Failed to fetch samples:", err);
-                setSamples(default_samples);
+                setSamples(undefined);
             });
+
+        if (token.current) {
+            getAllSubmitsByProblem(token.current, problemId)
+                .then((data) => { setPastSubmits(data?.sort((a, b) => { return b.submited_on.getTime() - a.submited_on.getTime(); })); })
+                .catch((err) => {
+                    console.error("Failed to fetch submits:", err);
+                    setPastSubmits(undefined);
+                });
+        } else {
+            setPastSubmits(undefined);
+        }
+
+        const unsubscribers: (() => void)[] = [];
+
+        unsubscribers.push(token.subscribe(reRender));
+        unsubscribers.push(problems.subscribe(reRender));
+        unsubscribers.push(languages.subscribe(reRender));
+        unsubscribers.push(statuses.subscribe(reRender));
 
         unsubscribers.push(token.subscribe((_, currentToken) => {
             if (currentToken) {
                 getAllSubmitsByProblem(currentToken, problemId)
-                    .then((data) => { setPastSubmits(data || default_pastSubmits); })
+                    .then((data) => { setPastSubmits(data?.sort((a, b) => { return b.submited_on.getTime() - a.submited_on.getTime(); })); })
                     .catch((err) => {
                         console.error("Failed to fetch submits:", err);
-                        setPastSubmits(default_pastSubmits);
+                        setPastSubmits(undefined);
                     });
             } else {
-                setPastSubmits(default_pastSubmits);
+                setPastSubmits(undefined);
             }
         }, true));
-
-        unsubscribers.push(token.subscribe(reRender));
-
-        if (token.current) {
-            getAllSubmitsByProblem(token.current, problemId)
-                .then((data) => { setPastSubmits(data || default_pastSubmits); })
-                .catch((err) => {
-                    console.error("Failed to fetch submits:", err);
-                    setPastSubmits(default_pastSubmits);
-                });
-        } else {
-            setPastSubmits(default_pastSubmits);
-        }
 
         return () => { unsubscribers.forEach((fn) => { fn(); }); };
     }, [problemId]);
@@ -303,10 +300,10 @@ export default function ProblemByIdPage() {
                     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }} variant="outlined">
                         <Typography variant="h6" fontWeight="bold" gutterBottom textAlign="left">Description</Typography>
                         <Divider sx={{ mb: 2 }} />
-                        <MuiMarkdown content={problem.description} />
+                        <MuiMarkdown content={problem.description_fr} />
                     </Paper>
 
-                    <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
+                    {samples !== undefined && <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
                         <Typography variant="h6" fontWeight="bold" gutterBottom textAlign="left">Samples</Typography>
                         <Divider sx={{ mb: 2 }} />
                         {samples.map((sample, index) => (
@@ -316,15 +313,15 @@ export default function ProblemByIdPage() {
                                 </Typography>
                                 <TerminalBlock title="Input" text={sample.input} />
                                 <TerminalBlock title="Output" text={sample.output} />
-                                {sample.explanation && (
+                                {sample.explanation_fr && (
                                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2, textAlign: 'left' }}>
                                         <Typography variant="subtitle2" fontWeight="bold">Explanation:</Typography>
-                                        <MuiMarkdown content={sample.explanation} />
+                                        <MuiMarkdown content={sample.explanation_fr} />
                                     </Box>
                                 )}
                             </Box>
                         ))}
-                    </Paper>
+                    </Paper>}
                 </Grid>
 
                 {/* Right Column: Code Editor & Submits */}
@@ -416,21 +413,43 @@ export default function ProblemByIdPage() {
                     </Paper>
 
                     {/* Past Submits Area */}
-                    <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
-                        <Typography variant="h6" fontWeight="bold" gutterBottom textAlign="left">Past Submits</Typography>
-                        <Board
+                    {pastSubmits !== undefined && <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" fontWeight="bold" textAlign="left" sx={{ mb: 0 }}>
+                                Past Submits
+                            </Typography>
+                            <IconButton onClick={handleRefreshSubmits} color="primary" size="small" aria-label="refresh data">
+                                <RefreshIcon />
+                            </IconButton>
+                        </Box>
+
+                        <BoardComp
                             data={pastSubmits}
                             columns={[
                                 {
                                     id: 1,
                                     label: "Status",
                                     extractValueToCell: (row) => {
+                                        const status = statuses.current?.find((s) => s.id === row.status_id);
+
+                                        if (!status) {
+                                            return (
+                                                <Chip
+                                                    size="small"
+                                                    label="Unknown"
+                                                    color="default"
+                                                    variant="outlined"
+                                                />
+                                            );
+                                        }
+
                                         return (
                                             <Chip
                                                 size="small"
-                                                label={row.status}
-                                                color={row.status === 'SOLVED' ? 'success' : 'error'}
+                                                label={status.name}
+                                                color={status.color as any}
                                                 variant="outlined"
+                                                sx={{ color: status.color, borderColor: status.color }}
                                             />
                                         );
                                     },
@@ -439,7 +458,18 @@ export default function ProblemByIdPage() {
                                 {
                                     id: 2,
                                     label: "Lang",
-                                    extractValueToCell: (row) => { return row.language; },
+                                    extractValueToCell: (row) => {
+                                        const language = languages.current?.find((l) => l.key === row.language);
+
+                                        return (
+                                            <Chip
+                                                size="small"
+                                                label={language?.label ?? row.language}
+                                                color="default"
+                                                variant="outlined"
+                                            />
+                                        );
+                                    },
                                     align: "center",
                                 },
                                 {
@@ -467,7 +497,7 @@ export default function ProblemByIdPage() {
                             ]}
                             rowsPerPageOptions={[5, 10, 15, 20]}
                         />
-                    </Paper>
+                    </Paper>}
                 </Grid>
             </Grid>
         </Box>

@@ -6,7 +6,8 @@ export interface Problem {
     color: string;
     short_title: string;
     title: string;
-    description: string;
+    description_fr: string;
+    description_en: string;
     time_limit: number;
     memory_limit: number;
 }
@@ -16,7 +17,8 @@ export const mapProblem = createMapper<Problem>({
     color: createConverter(unknownToString, "#000000"),
     short_title: createConverter(unknownToString, ""),
     title: createConverter(unknownToString, ""),
-    description: createConverter(unknownToString, ""),
+    description_fr: createConverter(unknownToString, ""),
+    description_en: createConverter(unknownToString, ""),
     time_limit: createConverter(unknownToNumber, 1000),
     memory_limit: createConverter(unknownToNumber, 256),
 });
@@ -25,47 +27,53 @@ export interface Sample {
     id: number;
     input: string;
     output: string;
-    explanation?: string;
+    explanation_fr?: string;
+    explanation_en?: string;
 }
 
 export const mapSample = createMapper<Sample>({
     id: createConverter(unknownToNumber, -1),
     input: createConverter(unknownToString, ""),
     output: createConverter(unknownToString, ""),
-    explanation: createConverter(unknownToString, undefined),
+    explanation_fr: createConverter(unknownToString, undefined),
+    explanation_en: createConverter(unknownToString, undefined),
 });
 
 export interface Language {
     key: string;
     label: string;
+    file_extension: string;
 }
 
 export const mapLanguage = createMapper<Language>({
     key: createConverter(unknownToString, ""),
     label: createConverter(unknownToString, ""),
+    file_extension: createConverter(unknownToString, ""),
 });
 
-const ALL_STATUSES = ["SOLVED", "ERROR", "-"] as const;
-export type SubmitStatus = (typeof ALL_STATUSES)[number];
-
-const statusSet = new Set<string>(ALL_STATUSES);
-
-export function isSubmitStatus(value: unknown): value is SubmitStatus {
-    return typeof value === "string" && statusSet.has(value);
+export interface SubmitStatus {
+    id: number;
+    name: string;
+    description: string;
+    color: string;
 }
 
+export const mapSubmitStatus = createMapper<SubmitStatus>({
+    id: createConverter(unknownToNumber, -1),
+    name: createConverter(unknownToString, ""),
+    description: createConverter(unknownToString, ""),
+    color: createConverter(unknownToString, "#000000"),
+});
+
 export interface Submit {
-    status: SubmitStatus;
+    status_id: number;
     submited_on: Date;
     language: Language["key"];
     submit_id: number;
 }
 
 export const mapSubmit = createMapper<Submit>({
-    status: createConverter((val) => {
-        if (isSubmitStatus(val)) return val;
-        return "-";
-    }, "-"),
+    status_id: createConverter(unknownToNumber, -1),
     submited_on: createConverter(unknownToDate, new Date()),
     language: createConverter(unknownToString, ""),
     submit_id: createConverter(unknownToNumber, -1),

@@ -23,15 +23,18 @@ import {
 import LogoutIcon from "@mui/icons-material/Logout";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { useGeneralContext } from "~/shared/contexts/general.context";
-import { updateUser, uploadAvatar, deleteAccount } from "~/api/user.api";
+import { updateUser, uploadAvatar, deleteAvatar, deleteAccount } from "~/api/user.api";
 import UserAvatarComp from "../common/user_avatar.component";
+import { useReRender } from "~/shared/utils/hook.util";
 
 export default function ProfilComp(): ReactNode {
     const { user, token, user_avatar } = useGeneralContext();
+    const reRender = useReRender();
     const currentUser = user.current;
 
     // UI States
@@ -49,12 +52,25 @@ export default function ProfilComp(): ReactNode {
     const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        console.log("Loaded: ProfilComp");
-        // Cleanup local preview URL when component unmounts to prevent memory leaks
         return () => {
             if (avatarPreview) URL.revokeObjectURL(avatarPreview);
         };
     }, [avatarPreview]);
+
+    useEffect(() => {
+
+        console.log("Loaded: ProfilComp");
+
+        const unsubscribers: (() => void)[] = [];
+
+        unsubscribers.push(token.subscribe(reRender));
+        unsubscribers.push(user.subscribe(reRender));
+        unsubscribers.push(user_avatar.subscribe(reRender));
+
+        return () => {
+            unsubscribers.forEach((fn) => { fn(); });
+        };
+    }, []);
 
     if (!currentUser) return null;
 
@@ -74,6 +90,29 @@ export default function ProfilComp(): ReactNode {
         }
     };
 
+    const handleDeleteAvatar = async () => {
+        // If there is only a local preview, just discard the local changes
+        if (avatarPreview) {
+            URL.revokeObjectURL(avatarPreview);
+            setAvatarPreview(undefined);
+            setAvatarFile(null);
+            return;
+        }
+
+        // If there is an existing avatar on the server, call the API
+        if (user_avatar.current && token.current) {
+            setIsLoading(true);
+            try {
+                await deleteAvatar(token.current);
+                user_avatar.current = undefined; // Instantly update navbar/context
+            } catch (error) {
+                console.error("Failed to delete avatar", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
+
     const handleSave = async () => {
         if (!token.current) return;
         setIsLoading(true);
@@ -82,7 +121,6 @@ export default function ProfilComp(): ReactNode {
             if (avatarFile) {
                 await uploadAvatar(token.current, avatarFile);
                 // Update global context so the navbar avatar updates instantly
-                if (user_avatar.current) URL.revokeObjectURL(user_avatar.current);
                 user_avatar.current = avatarPreview;
             }
 
@@ -148,16 +186,36 @@ export default function ProfilComp(): ReactNode {
                         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                         badgeContent={
                             isEditing ? (
-                                <Tooltip title="Upload new image">
-                                    <IconButton
-                                        component="label"
-                                        color="primary"
-                                        sx={{ bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'action.hover' } }}
-                                    >
-                                        <PhotoCameraIcon fontSize="small" />
-                                        <input hidden accept="image/*" type="file" onChange={handleAvatarChange} disabled={isLoading} />
-                                    </IconButton>
-                                </Tooltip>
+                                <Stack
+                                    direction="row"
+                                    spacing={0.5}
+                                    sx={{ bgcolor: 'background.paper', borderRadius: '20px', p: 0.5, boxShadow: 2 }}
+                                >
+                                    <Tooltip title="Upload new image">
+                                        <IconButton
+                                            component="label"
+                                            color="primary"
+                                            sx={{ bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'action.hover' } }}
+                                        >
+                                            <PhotoCameraIcon fontSize="small" />
+                                            <input hidden accept="image/*" type="file" onChange={handleAvatarChange} disabled={isLoading} />
+                                        </IconButton>
+                                    </Tooltip>
+
+                                    {displayAvatar && (
+                                        <Tooltip title="Remove avatar">
+                                            <IconButton
+                                                color="error"
+                                                size="small"
+                                                onClick={handleDeleteAvatar}
+                                                sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                                                disabled={isLoading}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </Stack>
                             ) : null
                         }
                     >
@@ -300,10 +358,11 @@ export default function ProfilComp(): ReactNode {
                         Log Out
                     </Button>
                 </CardActions>
-            </Card>
+            </Card >
 
             {/* DELETE CONFIRMATION DIALOG */}
-            <Dialog open={deleteDialogOpen} onClose={() => !isLoading && setDeleteDialogOpen(false)}>
+            < Dialog open={deleteDialogOpen} onClose={() => !isLoading && setDeleteDialogOpen(false)
+            }>
                 <DialogTitle sx={{ color: 'error.main' }}>Delete Account?</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
@@ -318,7 +377,7 @@ export default function ProfilComp(): ReactNode {
                         {isLoading ? <CircularProgress size={24} color="inherit" /> : "Yes, Delete Everything"}
                     </Button>
                 </DialogActions>
-            </Dialog>
-        </Box>
+            </Dialog >
+        </Box >
     );
 }

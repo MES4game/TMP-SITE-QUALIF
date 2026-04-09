@@ -5,89 +5,12 @@ import { getAvatarById, getPseudoById } from "~/api/user.api";
 import { ENV } from "~/shared/config/env.config";
 import { useGeneralContext } from "~/shared/contexts/general.context";
 import { type UserScore } from "~/shared/models/scoreboard.model";
+import { useReRender } from "~/shared/utils/hook.util";
 import BlankComp from "~/ui/components/common/blank.component";
-import Board from "~/ui/components/common/board.component";
+import BoardComp from "~/ui/components/common/board.component";
 import LoadingComp from "~/ui/components/common/loading.component";
 import UserAvatarComp from "~/ui/components/common/user_avatar.component";
 import ProblemBadgeComp from "~/ui/components/problem/badge.component";
-
-const DEFAULT_SCOREBOARD: UserScore[] = [
-    {
-        user_id: 1,
-        problems: [
-            {
-                problem_id: 1,
-                time_solved: 1000,
-                nb_tries: 2,
-            },
-            {
-                problem_id: 2,
-                time_solved: -1,
-                nb_tries: 1,
-            },
-        ],
-    },
-    {
-        user_id: 2,
-        problems: [
-            {
-                problem_id: 1,
-                time_solved: 2000,
-                nb_tries: 0,
-            },
-            {
-                problem_id: 2,
-                time_solved: 3000,
-                nb_tries: 3,
-            },
-        ],
-    },
-    {
-        user_id: 3,
-        problems: [
-            {
-                problem_id: 1,
-                time_solved: -1,
-                nb_tries: 0,
-            },
-            {
-                problem_id: 2,
-                time_solved: -1,
-                nb_tries: 0,
-            },
-        ],
-    },
-    {
-        user_id: 4,
-        problems: [
-            {
-                problem_id: 1,
-                time_solved: 1500,
-                nb_tries: 1,
-            },
-            {
-                problem_id: 2,
-                time_solved: -1,
-                nb_tries: 4,
-            },
-        ],
-    },
-    {
-        user_id: 5,
-        problems: [
-            {
-                problem_id: 1,
-                time_solved: 2500,
-                nb_tries: 2,
-            },
-            {
-                problem_id: 2,
-                time_solved: 3500,
-                nb_tries: 1,
-            },
-        ],
-    }
-];
 
 interface CellProps {
     row: UserScore & { score: number };
@@ -221,6 +144,7 @@ function ProblemCell(props: CellProps & { problem: { id: number } }): ReactNode 
 
 export default function ScoreboardPage(): ReactNode {
     const { problems } = useGeneralContext();
+    const reRender = useReRender();
     const [scoreboard, setScoreboard] = useState<(UserScore & { score: number })[] | null | undefined>(undefined);
 
     function tansformUserScore(row: UserScore): UserScore & { score: number } {
@@ -241,9 +165,7 @@ export default function ScoreboardPage(): ReactNode {
         return a.score - b.score;
     }
 
-    useEffect(() => {
-        console.log("Loaded: ScoreboardPage");
-
+    function handleRefresh(): void {
         getScoreboard()
             .then((scoreboard) => {
                 setScoreboard(scoreboard?.map(tansformUserScore).sort(compareScore));
@@ -251,8 +173,20 @@ export default function ScoreboardPage(): ReactNode {
             .catch((error) => {
                 console.error("Failed to fetch scoreboard data:", error);
                 alert("Failed to fetch scoreboard data. Please try again later.");
-                setScoreboard(DEFAULT_SCOREBOARD.map(tansformUserScore).sort(compareScore));
+                setScoreboard(null);
             });
+    }
+
+    useEffect(() => {
+        console.log("Loaded: ScoreboardPage");
+
+        handleRefresh();
+
+        const unsubscribers: (() => void)[] = [];
+
+        unsubscribers.push(problems.subscribe(reRender));
+
+        return () => { unsubscribers.forEach((fn) => { fn(); }); };
     }, []);
 
     useEffect(() => {
@@ -264,7 +198,7 @@ export default function ScoreboardPage(): ReactNode {
     if (scoreboard === null || scoreboard?.length === 0) return <BlankComp text="No Scoreboard to display" />;
 
     return (
-        <Board
+        <BoardComp
             data={scoreboard}
             columns={[
                 {
@@ -292,6 +226,7 @@ export default function ScoreboardPage(): ReactNode {
                 }) || []),
             ]}
             showIndexColumn
+            handleRefresh={handleRefresh}
         />
     );
 }

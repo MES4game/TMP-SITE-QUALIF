@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DOCKER_PORT_BACK}:3000"
+      - "42920:42920"
     volumes:
       - ${DOCKER_MOUNTED_BACK}:/mounted
       - ../mounted:/mounted/problems:ro

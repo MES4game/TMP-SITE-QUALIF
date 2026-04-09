@@ -4,7 +4,7 @@ import yaml from 'yaml';
 import { time } from 'console';
 
 const CAMISOLE_URL = 'http://192.168.122.39:42920/run';
-const PROBLEM_DIRECTORY = './';
+const PROBLEM_DIRECTORY = '/mounted/problems/';
 
 enum ProblemLanguage {
     CPP = 'cpp',

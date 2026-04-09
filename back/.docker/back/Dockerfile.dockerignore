@@ -1,7 +1,7 @@
-node_modules
-dist
-.env
-.gitignore
-.docker
-uploads
-db
+*
+
+!src/
+!src/**
+!package.json
+!pnpm-lock.yaml
+!tsconfig.json

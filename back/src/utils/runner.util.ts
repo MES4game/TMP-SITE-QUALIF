@@ -2,9 +2,9 @@ import { access, readdir, readFile } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
 import yaml from 'yaml';
 import { time } from 'console';
+import { env } from '../config';
 
-const CAMISOLE_URL = 'http://192.168.122.39:42920/run';
-const PROBLEM_DIRECTORY = '/mounted/problems/';
+const PROBLEM_DIRECTORY = `${env.MOUNTED_FOLDER}/problems/`;
 
 enum ProblemLanguage {
     CPP = 'cpp',
@@ -90,17 +90,14 @@ async function loadProblems(): Promise<void> {
     const problemIds = await readdir(PROBLEM_DIRECTORY);
 
     for (const problemId of problemIds) {
-        console.log(`Loading problem ${problemId}...`);
         const problemPath = `${PROBLEM_DIRECTORY}/${problemId}/`;
 
         if (! (await pathExists(problemPath))) continue;
         
-        console.log(`Found problem directory: ${problemPath}`);
         const dataYamlPath = `${problemPath}data.yaml`;
 
         if (!(await pathExists(dataYamlPath))) continue;
 
-        console.log(`Found data.yaml for problem ${problemId}, loading...`);
         const perfs: Map<string, string[]> = new Map();
         const valids: Map<string, string[]> = new Map();
 
@@ -443,10 +440,8 @@ async function executeProblem(userCode: string, language: ProblemLanguage, probl
         ]
     }
 
-    console.log('Payload to be sent to camisole:', JSON.stringify(payload, null, 2));
-
     // post payload to camisole and return the result
-    const response = await fetch(CAMISOLE_URL, {
+    const response = await fetch(env.CAMISOLE_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -472,4 +467,4 @@ function getCachedProblemMap(): Map<string, ProblemMap> {
     return cachedProblemMap;
 }
 
-export { loadProblems, retrieveProblem, executeProblem, ProblemLanguage, getCachedProblems, getCachedProblemMap };
+export { loadProblems, retrieveProblem, executeProblem, ParseProblemLanguage, ProblemLanguage, getCachedProblems, getCachedProblemMap };

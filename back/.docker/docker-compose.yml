@@ -9,7 +9,7 @@ services:
       - "127.0.0.1:${DOCKER_PORT_BACK}:3000"
     volumes:
       - ${DOCKER_MOUNTED_BACK}:/mounted
-      - ./mounted:/mounted/problems:ro
+      - ../mounted:/mounted/problems:ro
     environment:
       PORT: 3000
       NODE_ENV: production

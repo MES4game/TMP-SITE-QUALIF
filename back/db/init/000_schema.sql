@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_connection DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_on DATETIME NULL,
-    verified_email BOOLEAN DEFAULT FALSE,
+    verified_email BOOLEAN DEFAULT TRUE,
     avatar_path VARCHAR(255) NULL
 );
 

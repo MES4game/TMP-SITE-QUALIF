@@ -13,6 +13,9 @@ import { getScoreboard } from './controllers/scoreboard.controller';
 import { registerUser, loginUser, getSelf, getAvatarById, uploadUserAvatar, deleteAccount, updateSelf, forgotPassword, resetPassword, deleteUserAvatar, verifyEmail, getPseudoById } from './controllers/user.controller';
 import { getAllProblems, getAllSamplesByProblem, getSkeletonCodeByProblem, getAllLanguages, getUserInfoByProblem, getAllSubmitsByProblem, getAllStatuses } from './controllers/problem.controller';
 import { getCodeBySubmitId, submitSolution } from './controllers/submit.controller';
+import { loadProblems } from './utils/runner.util';
+import { pool } from './db';
+import { userRateLimiter } from './middlewares/rate.middleware';
 
 const app = express();
 
@@ -447,7 +450,7 @@ app.get('/scoreboard', getScoreboard);
  *       200:
  *         description: Submission received and is being processed
  */
-app.post('/submit/:problem/:language', requireAuth, uploadCode.single('file'), submitSolution);
+app.post('/submit/:problem/:language', requireAuth, userRateLimiter(1, 3), uploadCode.single('file'), submitSolution);
 
 /**
  * @swagger
@@ -469,9 +472,17 @@ app.post('/submit/:problem/:language', requireAuth, uploadCode.single('file'), s
  */
 app.get('/submit/:id/code', requireAuth, getCodeBySubmitId);
 
+loadProblems();
 // Start server
 app.listen(env.PORT, () => {
+    console.clear();
+    console.log("========================================");
+    console.log("   Welcome to the Competition Backend   ");
+    console.log("========================================");
     console.log(`🚀 Competition Backend running on port ${env.PORT}`);
     console.log(`⏱️ Start Date: ${env.START_DATE}`);
     console.log(`🧊 Freeze Date: ${env.FREEZE_DATE}`);
+    console.log("Loading problems data for submisions...");
+    console.log("Reset all pending/in-queue submissions to '-' status...");
+    pool.query(`UPDATE submits SET status_id = 9 WHERE status_id IN (2, 3)`);
 });

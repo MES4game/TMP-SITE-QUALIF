@@ -30,7 +30,9 @@ export const env = {
     SMTP_USER: process.env.SMTP_USER!,
     SMTP_PASS: process.env.SMTP_PASS!,
     EMAIL_FROM: process.env.EMAIL_FROM!,
-    MOUNTED_FOLDER: process.env.MOUNTED_FOLDER || '/mounted'
+    MOUNTED_FOLDER: process.env.MOUNTED_FOLDER || '/mounted',
+    CAMISOLE_URL: process.env.CAMISOLE_URL || 'http://localhost:42920/run',
+    MAX_CONCURRENT_JOBS: parseInt(process.env.MAX_CONCURRENT_JOBS || '1', 10),
 };
 
 export function getProblemFolderPath(problemShortTitle: string): string {
